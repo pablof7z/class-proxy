@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Class-proxy by heelhook</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/heelhook/class-proxy">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/heelhook/class-proxy/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/heelhook/class-proxy/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Class-proxy</h1>
+          <p>A generic (yet ActiveRecord compliant) class proxy to setup proxy methods for your classes</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/heelhook">heelhook</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="http://twitter.com/#!/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>class-proxy</h1>
+
+<p>A generic (yet ActiveRecord compliant) class proxy to setup proxy methods for your classes.</p>
+
+<h2>Using</h2>
+
+<p>The <code>ClassProxy</code> module just needs to be included in a class to get the capabilities
+provided by this gem.</p>
+
+<h3>Example</h3>
+
+<div class="highlight"><pre><span class="k">class</span> <span class="nc">UserDb</span>
+  <span class="kp">include</span> <span class="no">MongoMapper</span><span class="o">::</span><span class="no">Document</span>
+  <span class="kp">include</span> <span class="no">ClassProxy</span>
+
+  <span class="n">primary_fetch</span>  <span class="p">{</span> <span class="o">|</span><span class="n">args</span><span class="o">|</span> <span class="n">where</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">first</span> <span class="ow">or</span> <span class="p">(</span><span class="k">raise</span> <span class="no">NotFound</span><span class="p">)</span> <span class="p">}</span>
+  <span class="n">fallback_fetch</span> <span class="p">{</span> <span class="o">|</span><span class="n">args</span><span class="o">|</span> <span class="no">Octokit</span><span class="o">.</span><span class="n">user</span><span class="p">(</span><span class="n">args</span><span class="o">[</span><span class="ss">:username</span><span class="o">]</span><span class="p">)</span> <span class="p">}</span>
+  <span class="n">after_fallback_fetch</span> <span class="p">{</span> <span class="o">|</span><span class="n">obj</span><span class="o">|</span> <span class="no">UserDb</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">login</span><span class="p">)</span> <span class="p">}</span>
+
+  <span class="n">key</span> <span class="ss">:name</span><span class="p">,</span> <span class="nb">String</span>
+  <span class="n">key</span> <span class="ss">:reverse_name</span><span class="p">,</span> <span class="nb">String</span>
+  <span class="n">key</span> <span class="ss">:username</span><span class="p">,</span> <span class="nb">String</span>
+  <span class="n">key</span> <span class="ss">:public_repos</span><span class="p">,</span> <span class="nb">String</span>
+  <span class="n">key</span> <span class="ss">:username_uppercase</span><span class="p">,</span> <span class="nb">String</span>
+
+  <span class="c1"># Use fallback_fetch since obj is requested</span>
+  <span class="n">proxy_methods</span> <span class="n">reverse_name</span><span class="p">:</span> <span class="nb">lambda</span> <span class="p">{</span> <span class="o">|</span><span class="n">obj</span><span class="o">|</span> <span class="n">obj</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">reverse</span> <span class="p">}</span>
+
+  <span class="c1"># No obj in the lambda, use the UserDb#username method here</span>
+  <span class="n">proxy_methods</span> <span class="n">username_uppercase</span><span class="p">:</span> <span class="nb">lambda</span> <span class="p">{</span> <span class="n">username</span><span class="o">.</span><span class="n">upcase</span> <span class="p">}</span>
+<span class="k">end</span>
+</pre></div>
+
+<p>With this class now the following can be done:</p>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span> <span class="o">=</span> <span class="no">UserDb</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="s1">'heelhook'</span><span class="p">)</span>
+<span class="o">=&gt;</span> <span class="c1">#&lt;UserDb _id: 779813, name: "Pablo Fernandez", public_repos: "25", username: "heelhook"&gt;</span>
+</pre></div>
+
+<p>Since <code>Octokit.user</code> returned an object which responded to <code>name</code> and our <code>UserDb</code> class
+has a corresponding attribute, <code>:name</code> was set for us.</p>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span><span class="o">.</span><span class="n">name</span>
+<span class="o">=&gt;</span> <span class="s2">"Pablo Fernandez"</span>
+</pre></div>
+
+<p>Yet <code>reverse_name</code> is not included, so when we call it, the <code>proxy_method</code> associated with it
+is used.</p>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span><span class="o">.</span><span class="n">reverse_name</span>
+<span class="o">=&gt;</span> <span class="s2">"zednanreF olbaP"</span>
+</pre></div>
+
+<p>Since that <code>proxy_method</code>'s <code>lambda</code> requested an <code>|obj|</code>, the method <code>fallback_fetch</code> was used
+and the object returned is used for <code>obj.name.reverse</code></p>
+
+<h4>Using <code>proxy_methods</code> without new <code>fallback_fetch</code> calls</h4>
+
+<p>Let's see what's currently loaded.</p>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span><span class="o">.</span><span class="n">no_proxy_username_uppercase</span>
+<span class="o">=&gt;</span> <span class="kp">nil</span>
+</pre></div>
+
+<p>Using the proxy. We already have the username in our object, so our <code>username_uppercase</code> proxy method will
+just use that (no <code>|obj|</code> is used).</p>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span><span class="o">.</span><span class="n">username_uppercase</span>
+<span class="o">=&gt;</span> <span class="s2">"HEELHOOK"</span>
+</pre></div>
+
+<h4>Saving</h4>
+
+<p>Here the <code>fallback_fetch</code> will not be used since the object has been persisted.</p>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span><span class="o">.</span><span class="n">save</span>
+<span class="o">=&gt;</span> <span class="kp">true</span>
+<span class="o">&gt;</span> <span class="n">user</span> <span class="o">=</span> <span class="no">UserDb</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="s1">'heelhook'</span><span class="p">)</span>
+<span class="o">=&gt;</span> <span class="c1">#&lt;UserDb _id: 779813, name: "Pablo Fernandez", public_repos: "25", username: "heelhook"&gt;</span>
+</pre></div>
+
+<p>Like any</p>
+
+<h2>Compatibility</h2>
+
+<p>ClassProxy is tested against MRI 1.9.3.</p>
+
+<h2>Credits</h2>
+
+<p>Pablo Fernandez: heelhook at littleq . net</p>
+
+<h2>Contributing</h2>
+
+<p>Once you've made your great commits:</p>
+
+<ol>
+<li>Fork</li>
+<li>Create a topic branch - <code>git checkout -b my_branch</code>
+</li>
+<li>Push to your branch - <code>git push origin my_branch</code>
+</li>
+<li>Create a <a href="https://help.github.com/pull-requests/">Pull Request</a> from your branch</li>
+<li>That's it!</li>
+</ol><h2>License</h2>
+
+<p>Copyright (c) 2012 Pablo Fernandez</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
