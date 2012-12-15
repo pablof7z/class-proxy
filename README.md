@@ -1,7 +1,7 @@
 class-proxy
 ===========
 
-A generic (yet ActiveRecord compliant) class proxy to setup proxy methods for your classes.
+A generic (ActiveRecord compatible) class proxy to setup proxy methods for your classes.
 
 ## Using
 
@@ -9,6 +9,35 @@ The `ClassProxy` module just needs to be included in a class to get the capabili
 provided by this gem.
 
 ### Example
+
+#### Basic example
+
+```ruby
+class UserDb
+  include MongoMapper::Document
+  include ClassProxy
+
+  primary_fetch  { |args| where(args).first or (raise NotFound) }
+  fallback_fetch { |args| Octokit.user(args[:login]) }
+
+  key :name, String
+  key :login, String
+end
+```
+
+```ruby
+> user = UserDb.fetch(login: 'heelhook')
+=> #<UserDb _id: 779813, name: "Pablo Fernandez", login: "heelhook">
+```
+
+In this example the database will be hit with a `where(login: 'heelhook')` and
+if it comes back empty `Octokit` will be used to retrieve the information requested.
+
+The default action (overwritten with `after_fallback_fetch`, not used in this example)
+is to return a new object of the parent class (`UserDb`) with the proper keys set,
+in this example `:id`, `:name` and `:login`.
+
+#### Detailed example
 
 ```ruby
 class UserDb
