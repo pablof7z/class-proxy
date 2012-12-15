@@ -2,7 +2,7 @@ require 'spec_helper'
 require 'fixtures/classes'
 
 describe ClassProxy do
-  before :all do
+  before :each do
     reset_databases
   end
 
@@ -53,6 +53,19 @@ describe ClassProxy do
 
     it "lazy loads undefined attributes using proxy_methods" do
       user.public_repos.should_not be_nil
+    end
+  end
+
+  context "no fallback post processor" do
+    let (:klass) { SimpleClass }
+    let (:user) { klass.fetch(login: login)}
+
+    it "finds someone" do
+      user.class.should == klass
+    end
+
+    it "the user has the right login" do
+      user.login.should == login
     end
   end
 end

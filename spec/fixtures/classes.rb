@@ -24,3 +24,11 @@ class UserNoDb
 
   proxy_methods repositories: lambda { Octokit.repos(login) }
 end
+
+class SimpleClass
+  include ClassProxy
+
+  fallback_fetch { |args| Octokit.user(args[:login]) }
+
+  attr_accessor :name, :login
+end
