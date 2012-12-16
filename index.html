@@ -40,7 +40,7 @@
 
         <h1>class-proxy</h1>
 
-<p>A generic (yet ActiveRecord compliant) class proxy to setup proxy methods for your classes.</p>
+<p>A generic (ActiveRecord compatible) class proxy to setup proxy methods for your classes.</p>
 
 <h2>Using</h2>
 
@@ -48,6 +48,33 @@
 provided by this gem.</p>
 
 <h3>Example</h3>
+
+<h4>Basic example</h4>
+
+<div class="highlight"><pre><span class="k">class</span> <span class="nc">UserDb</span>
+  <span class="kp">include</span> <span class="no">MongoMapper</span><span class="o">::</span><span class="no">Document</span>
+  <span class="kp">include</span> <span class="no">ClassProxy</span>
+
+  <span class="n">primary_fetch</span>  <span class="p">{</span> <span class="o">|</span><span class="n">args</span><span class="o">|</span> <span class="n">where</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">first</span> <span class="ow">or</span> <span class="p">(</span><span class="k">raise</span> <span class="no">NotFound</span><span class="p">)</span> <span class="p">}</span>
+  <span class="n">fallback_fetch</span> <span class="p">{</span> <span class="o">|</span><span class="n">args</span><span class="o">|</span> <span class="no">Octokit</span><span class="o">.</span><span class="n">user</span><span class="p">(</span><span class="n">args</span><span class="o">[</span><span class="ss">:login</span><span class="o">]</span><span class="p">)</span> <span class="p">}</span>
+
+  <span class="n">key</span> <span class="ss">:name</span><span class="p">,</span> <span class="nb">String</span>
+  <span class="n">key</span> <span class="ss">:login</span><span class="p">,</span> <span class="nb">String</span>
+<span class="k">end</span>
+</pre></div>
+
+<div class="highlight"><pre><span class="o">&gt;</span> <span class="n">user</span> <span class="o">=</span> <span class="no">UserDb</span><span class="o">.</span><span class="n">fetch</span><span class="p">(</span><span class="n">login</span><span class="p">:</span> <span class="s1">'heelhook'</span><span class="p">)</span>
+<span class="o">=&gt;</span> <span class="c1">#&lt;UserDb _id: 779813, name: "Pablo Fernandez", login: "heelhook"&gt;</span>
+</pre></div>
+
+<p>In this example the database will be hit with a <code>where(login: 'heelhook')</code> and
+if it comes back empty <code>Octokit</code> will be used to retrieve the information requested.</p>
+
+<p>The default action (overwritten with <code>after_fallback_fetch</code>, not used in this example)
+is to return a new object of the parent class (<code>UserDb</code>) with the proper keys set,
+in this example <code>:id</code>, <code>:name</code> and <code>:login</code>.</p>
+
+<h4>Detailed example</h4>
 
 <div class="highlight"><pre><span class="k">class</span> <span class="nc">UserDb</span>
   <span class="kp">include</span> <span class="no">MongoMapper</span><span class="o">::</span><span class="no">Document</span>
