@@ -76,4 +76,34 @@ describe ClassProxy do
       user.should be_nil
     end
   end
+
+  context "manually created with some fields and not others" do
+    let (:klass) { SimpleClass }
+    let (:user) do
+      u = klass.new
+      u.login = login
+      u
+    end
+
+    it "has a login" do
+      user.login.should == login
+    end
+
+    it "doesn't have a name loaded" do
+      user.no_proxy_name.should be_nil
+    end
+
+    it "lazy loads the name when requested" do
+      user.name.should_not be_nil
+    end
+
+    it "doesn't have a name loaded again" do
+      user.name = 'my made up name'
+      user.name.should == 'my made up name'
+    end
+
+    it "respects proxy_methods that mix default procs and customized procs" do
+      user.uppercase_login.should == user.login.upcase
+    end
+  end
 end

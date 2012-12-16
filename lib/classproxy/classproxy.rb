@@ -32,9 +32,10 @@ module ClassProxy
     #     include ClassProxy
     #
     #     fallback_fetch { |args| Octokit.user(args[:login]) }
-    #     after_fallback_fetch do |obj|
+    #     after_fallback_fetch do |model, obj|
     #       # obj is what `fallback_fetch` returns
-    #       GithubUser.new(name: obj.name, login: obj.login)
+    #       model.name  = obj.name
+    #       model.login = obj.login
     #     end
     #
     #     attr_accessor :name, :login
@@ -49,11 +50,11 @@ module ClassProxy
     #     include ClassProxy
     #
     #     fallback_fetch { |args| Octokit.user(args[:login]) }
-    #     after_fallback_fetch { |obj| GithubUser.new(name: obj.name, login: obj.login) }
+    #     after_fallback_fetch { |model, obj| model.name = obj.name; model.login = obj.login }
     #
-    #     attr_accessor :name, :login
+    #     attr_accessor :name, :followers :login
     #
-    #     proxy_methods uppercase_login: lambda { login.upcase }
+    #     proxy_methods :name, :followers, uppercase_login: lambda { login.upcase }
     #   end
     #
     #   user = GithubUser.find(login: 'heelhook')
@@ -65,10 +66,9 @@ module ClassProxy
       methods.each do |method|
         if method.is_a? Symbol
           # If given a symbol, store as a method to overwrite and use the default loader
-          proxy_method method, @default_proc
+          proxy_method method
         elsif method.is_a? Hash
-          # If its a hash it will include methods to overwrite along with
-          # custom loaders
+          # If its a hash it will include methods to overwrite along with custom loaders
           method.each { |method_name, proc| proxy_method method_name, proc }
         end
       end
@@ -91,19 +91,26 @@ module ClassProxy
     # @param [ Hash ] args The criteria to use
     # @options options [ true, false] :skip_fallback Don't use fallback methods
     def fetch(args, options={})
-      @primary_fetch.is_a?(Proc) ? @primary_fetch.call(args) : (raise NotFound)
+      @primary_fetch.is_a?(Proc) ? @primary_fetch[args] : (raise NotFound)
     rescue NotFound
       return nil if options[:skip_fallback]
 
-      fallback_obj = @fallback_fetch.call(args)
+      run_fallback(args)
+    end
+
+    private
+
+    def run_fallback(args, _self=nil)
+      fallback_obj = @fallback_fetch[args]
 
       # Use the after_fallback_method
-      obj = @after_fallback_method.is_a?(Proc) ? @after_fallback_method[fallback_obj] : self.new
+      obj = _self || self.new
+      @after_fallback_method[obj, fallback_obj] if @after_fallback_method.is_a?(Proc)
 
       # Go through the keys of the return object and try to use setters
       if fallback_obj and obj and fallback_obj.respond_to? :keys and fallback_obj.keys.respond_to? :each
         fallback_obj.keys.each do |key|
-          next unless obj.respond_to? "#{key}="
+          next unless obj.respond_to? "#{key}=" and obj.send(key) == nil
           obj.send("#{key}=", fallback_obj.send(key))
         end
       end
@@ -111,9 +118,7 @@ module ClassProxy
       return obj
     end
 
-    private
-
-    def proxy_method(method_name, proc)
+    def proxy_method(method_name, proc=nil)
       self.class_eval do
         alias_method "no_proxy_#{method_name}".to_sym, method_name
 
@@ -131,13 +136,31 @@ module ClassProxy
           if v == nil and @mutex_in_call_for != method_name
             @mutex_in_call_for = method_name
             method = "_run_fallback_#{method_name}".to_sym
-            v = if self.method(method).arity == 1
-              fallback_fetch_method = self.class.instance_variable_get(:@fallback_fetch)
-              fallback_obj = fallback_fetch_method.call(self)
-              self.send(method, fallback_obj)
+            if self.respond_to?(method)
+              v = if self.method(method).arity == 1
+                # Callback method is expecting to receive the fallback object
+                fallback_fetch_method = self.class.instance_variable_get(:@fallback_fetch)
+                fallback_obj = fallback_fetch_method[self]
+                self.send(method, fallback_obj)
+              else
+                # Callback method doesn't need the fallback object
+                self.send(method)
+              end
             else
-              self.send(method)
+              # This method has no callback, so just run the fallback
+              args = {}
+              (self.methods - self.class.methods).each do |key|
+                next if key[-1] == '=' # don't run for set
+                hkey = key.to_s.gsub(/^no_proxy_/, '')
+                args[hkey.to_sym] = self.send(key)
+              end
+              self.class.send :run_fallback, args, self
+
+              # The value might have changed, so check here
+              v = self.send("no_proxy_#{method_name}".to_sym)
             end
+
+            # Set the defaults when this class responds to the same method
             self.send("#{method_name}=".to_sym, v) if v and self.respond_to?("#{method_name}=")
             @mutex_in_call_for = nil
           end
@@ -147,14 +170,11 @@ module ClassProxy
       end
 
       # Now define the fallback that is going to be used
-      self.send(:define_method, "_run_fallback_#{method_name}", &proc)
+      self.send(:define_method, "_run_fallback_#{method_name}", &proc) if proc.is_a? Proc
     end
   end
 
-  @default_proc = Proc.new { "hi" }
-
   def self.included(receiver)
     receiver.extend ClassMethods
-
   end
 end
