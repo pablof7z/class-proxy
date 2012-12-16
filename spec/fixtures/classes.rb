@@ -4,7 +4,7 @@ class UserDb
 
   primary_fetch { |args| where(args).first or (raise NotFound) }
   fallback_fetch { |args| Octokit.user(args[:username]) }
-  after_fallback_fetch { |model, obj| model.username = obj.login }
+  after_fallback_fetch { |obj| self.username = obj.login }
 
   key :person_name, String
   key :username, String

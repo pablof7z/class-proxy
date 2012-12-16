@@ -32,10 +32,10 @@ module ClassProxy
     #     include ClassProxy
     #
     #     fallback_fetch { |args| Octokit.user(args[:login]) }
-    #     after_fallback_fetch do |model, obj|
+    #     after_fallback_fetch do |obj|
     #       # obj is what `fallback_fetch` returns
-    #       model.name  = obj.name
-    #       model.login = obj.login
+    #       self.name  = obj.name
+    #       self.login = obj.login
     #     end
     #
     #     attr_accessor :name, :login
@@ -50,7 +50,7 @@ module ClassProxy
     #     include ClassProxy
     #
     #     fallback_fetch { |args| Octokit.user(args[:login]) }
-    #     after_fallback_fetch { |model, obj| model.name = obj.name; model.login = obj.login }
+    #     after_fallback_fetch { |obj| self.name = obj.name; self.login = obj.login }
     #
     #     attr_accessor :name, :followers :login
     #
@@ -105,7 +105,7 @@ module ClassProxy
 
       # Use the after_fallback_method
       obj = _self || self.new
-      @after_fallback_method[obj, fallback_obj] if @after_fallback_method.is_a?(Proc)
+      obj.instance_exec fallback_obj, &@after_fallback_method if @after_fallback_method.is_a? Proc
 
       # Go through the keys of the return object and try to use setters
       if fallback_obj and obj and fallback_obj.respond_to? :keys and fallback_obj.keys.respond_to? :each
