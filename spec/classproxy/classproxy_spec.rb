@@ -56,7 +56,7 @@ describe ClassProxy do
     end
   end
 
-  context "no fallback post processor" do
+  context "with no fallback post processor" do
     let (:klass) { SimpleClass }
     let (:user) { klass.fetch(login: login)}
 
@@ -74,6 +74,15 @@ describe ClassProxy do
 
     it "doesn't find someone" do
       user.should be_nil
+    end
+  end
+
+  context "with an invalid class definition" do
+    it "errors when a class has wrong methods" do
+      expect {
+        load 'fixtures/class_with_wrong_methods'
+        ClassWithWrongMethods
+      }.to raise_error LoadError
     end
   end
 

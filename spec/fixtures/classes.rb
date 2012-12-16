@@ -30,7 +30,7 @@ class SimpleClass
 
   fallback_fetch { |args| Octokit.user(args[:login]) }
 
-  attr_accessor :name, :login, :uppercase_login
+  attr_accessor :name, :followers, :login, :uppercase_login
 
-  proxy_methods :name, uppercase_login: lambda { login.upcase }
+  proxy_methods :name, :followers, uppercase_login: lambda { login.upcase }
 end

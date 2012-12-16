@@ -110,8 +110,13 @@ module ClassProxy
       # Go through the keys of the return object and try to use setters
       if fallback_obj and obj and fallback_obj.respond_to? :keys and fallback_obj.keys.respond_to? :each
         fallback_obj.keys.each do |key|
-          next unless obj.respond_to? "#{key}=" and obj.send(key) == nil
-          obj.send("#{key}=", fallback_obj.send(key))
+          next unless obj.respond_to? "#{key}="
+
+          # check if its set to something else
+          get_method = obj.respond_to?("no_proxy_#{key}") ? "no_proxy_#{key}" : key
+          if obj.respond_to? get_method and obj.send(get_method) == nil
+            obj.send("#{key}=", fallback_obj.send(key))
+          end
         end
       end
 
@@ -133,8 +138,9 @@ module ClassProxy
           # to establish the dirty attribute, since the getter is being replaced
           # here and the setter is being used when appropriate, the @mutex_in_call_for
           # prevents endless recursion.
-          if v == nil and @mutex_in_call_for != method_name
-            @mutex_in_call_for = method_name
+          @mutex_in_call_for ||= []
+          if v == nil and not @mutex_in_call_for.include? method_name
+            @mutex_in_call_for << method_name
             method = "_run_fallback_#{method_name}".to_sym
             if self.respond_to?(method)
               v = if self.method(method).arity == 1
@@ -148,13 +154,8 @@ module ClassProxy
               end
             else
               # This method has no callback, so just run the fallback
-              args = {}
-              (self.methods - self.class.methods).each do |key|
-                next if key[-1] == '=' # don't run for set
-                hkey = key.to_s.gsub(/^no_proxy_/, '')
-                args[hkey.to_sym] = self.send(key)
-              end
-              self.class.send :run_fallback, args, self
+              args_class = ArgsClass.new(self)
+              self.class.send :run_fallback, args_class, self
 
               # The value might have changed, so check here
               v = self.send("no_proxy_#{method_name}".to_sym)
@@ -162,7 +163,7 @@ module ClassProxy
 
             # Set the defaults when this class responds to the same method
             self.send("#{method_name}=".to_sym, v) if v and self.respond_to?("#{method_name}=")
-            @mutex_in_call_for = nil
+            @mutex_in_call_for.delete method_name
           end
 
           return v
@@ -176,5 +177,17 @@ module ClassProxy
 
   def self.included(receiver)
     receiver.extend ClassMethods
+  end
+
+  # This class makes methods accessible as a hash key, useful to pass
+  # as a fallback_fetch argument
+  class ArgsClass < BasicObject
+    def initialize(object)
+      @target = object
+    end
+
+    def [](key)
+      @target.respond_to?(key) ? @target.send(key) : @target[key]
+    end
   end
 end
