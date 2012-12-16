@@ -26,8 +26,8 @@ task release: :build do
   version = ClassProxy::VERSION
   system "git tag -a v#{version} -m 'Tagging #{version}'"
   system "git push --tags"
-  system "gem push classproxy-#{version}"
-  system "rm classproxy-#{version}"
+  system "gem push classproxy-#{version}.gem"
+  system "rm classproxy-#{version}.gem"
 end
 
 task default: :spec
