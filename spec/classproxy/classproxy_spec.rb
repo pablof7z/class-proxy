@@ -68,4 +68,12 @@ describe ClassProxy do
       user.login.should == login
     end
   end
+
+  context "explicitly skip existent fallback" do
+    let (:user) { klass.fetch({username: login}, {skip_fallback: true})}
+
+    it "doesn't find someone" do
+      user.should be_nil
+    end
+  end
 end
