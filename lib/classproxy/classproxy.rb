@@ -192,5 +192,14 @@ module ClassProxy
     def [](key)
       @target.respond_to?(key) ? @target.send(key) : @target[key]
     end
+
+    def inspect
+      "ArgsClass [#{@target.inspect}] " +
+      (@target.methods - @target.class.methods).join(', ')
+    end
+
+    def target
+      @target
+    end
   end
 end
