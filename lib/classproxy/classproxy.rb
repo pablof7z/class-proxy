@@ -125,7 +125,9 @@ module ClassProxy
 
     def proxy_method(method_name, proc=nil)
       self.class_eval do
-        alias_method "no_proxy_#{method_name}".to_sym, method_name
+        unless self.instance_methods.include? "no_proxy_#{method_name}".to_sym
+          alias_method "no_proxy_#{method_name}".to_sym, method_name
+        end
 
         define_method(method_name) do |*args|
           # Use the no_proxy one first

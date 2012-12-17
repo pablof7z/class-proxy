@@ -114,5 +114,9 @@ describe ClassProxy do
     it "respects proxy_methods that mix default procs and customized procs" do
       user.uppercase_login.should == user.login.upcase
     end
+
+    it "calls the last version of an overwritten proxy_method" do
+      user.followers.should == 'second version'
+    end
   end
 end

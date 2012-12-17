@@ -33,4 +33,5 @@ class SimpleClass
   attr_accessor :name, :followers, :login, :uppercase_login
 
   proxy_methods :name, :followers, uppercase_login: lambda { login.upcase }
+  proxy_methods followers: lambda { "second version" }
 end
