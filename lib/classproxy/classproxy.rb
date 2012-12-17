@@ -101,10 +101,11 @@ module ClassProxy
     private
 
     def run_fallback(args, _self=nil)
-      fallback_obj = @fallback_fetch[args]
+      obj = _self || self.new
+
+      fallback_obj = obj.instance_exec args, &@fallback_fetch
 
       # Use the after_fallback_method
-      obj = _self || self.new
       obj.instance_exec fallback_obj, &@after_fallback_method if @after_fallback_method.is_a? Proc
 
       # Go through the keys of the return object and try to use setters
