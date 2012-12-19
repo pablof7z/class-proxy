@@ -135,7 +135,7 @@ describe ClassProxy do
 
         attr_accessor :method1, :method2, :method3
 
-        proxy_methods :method1, :method2
+        proxy_methods :method1, :method2, :method3
       end
     end
     let (:object) { klass.new }
@@ -155,9 +155,9 @@ describe ClassProxy do
       object.method2.should be_nil
     end
 
-    it "uses symbols to keep track of methods that returned nil" do
+    it "doesn't run the default fallback when it has already done so for any method with no custom proxy method fallback" do
       object.method1
-      object.instance_variable_get(:@proxied_with_nil).each {|k| k.class.should == Symbol }
+      object.method3
     end
   end
 
