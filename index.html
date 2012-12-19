@@ -32,7 +32,7 @@
       <section>
         <div id="title">
           <h1>Class-proxy</h1>
-          <p>A generic (yet ActiveRecord compliant) class proxy to setup proxy methods for your classes</p>
+          <p>A generic (ActiveRecord compatible) class proxy to setup proxy methods for your classes</p>
           <hr>
           <span class="credits left">Project maintained by <a href="https://github.com/heelhook">heelhook</a></span>
           <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="http://twitter.com/#!/michigangraham">mattgraham</a></span>
@@ -82,7 +82,7 @@ in this example <code>:id</code>, <code>:name</code> and <code>:login</code>.</p
 
   <span class="n">primary_fetch</span>  <span class="p">{</span> <span class="o">|</span><span class="n">args</span><span class="o">|</span> <span class="n">where</span><span class="p">(</span><span class="n">args</span><span class="p">)</span><span class="o">.</span><span class="n">first</span> <span class="ow">or</span> <span class="p">(</span><span class="k">raise</span> <span class="no">NotFound</span><span class="p">)</span> <span class="p">}</span>
   <span class="n">fallback_fetch</span> <span class="p">{</span> <span class="o">|</span><span class="n">args</span><span class="o">|</span> <span class="no">Octokit</span><span class="o">.</span><span class="n">user</span><span class="p">(</span><span class="n">args</span><span class="o">[</span><span class="ss">:username</span><span class="o">]</span><span class="p">)</span> <span class="p">}</span>
-  <span class="n">after_fallback_fetch</span> <span class="p">{</span> <span class="o">|</span><span class="n">obj</span><span class="o">|</span> <span class="no">UserDb</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="n">username</span><span class="p">:</span> <span class="n">obj</span><span class="o">.</span><span class="n">login</span><span class="p">)</span> <span class="p">}</span>
+  <span class="n">after_fallback_fetch</span> <span class="p">{</span> <span class="o">|</span><span class="n">obj</span><span class="o">|</span> <span class="nb">self</span><span class="o">.</span><span class="n">username</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">login</span> <span class="p">}</span>
 
   <span class="n">key</span> <span class="ss">:name</span><span class="p">,</span> <span class="nb">String</span>
   <span class="n">key</span> <span class="ss">:reverse_name</span><span class="p">,</span> <span class="nb">String</span>
