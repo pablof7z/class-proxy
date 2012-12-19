@@ -119,4 +119,61 @@ describe ClassProxy do
       user.followers.should == 'second version'
     end
   end
+
+  context "default fallback returns nil values" do
+    let (:klass) do
+      t = double
+      t.should_receive(:respond_to?).and_return(true)
+      t.should_receive(:keys).at_least(1).times.and_return([:method1, :method2])
+      t.should_receive(:method1).and_return('with value')
+      t.should_receive(:method2).exactly(1).times.and_return(nil)
+
+      Class.new do
+        include ClassProxy
+
+        fallback_fetch {|args| t }
+
+        attr_accessor :method1, :method2, :method3
+
+        proxy_methods :method1, :method2
+      end
+    end
+    let (:object) { klass.new }
+
+    it "is an object with nilled attributes" do
+      object.no_proxy_method1.should be_nil
+      object.method1
+      object.method2
+    end
+
+    it "comes back with a value for the method that has something" do
+      object.method1.should_not be_nil
+    end
+
+    it "comes back with nothing for the method that has nothing but doesn't instist on calling it" do
+      object.method2.should be_nil
+      object.method2.should be_nil
+    end
+  end
+
+  context "custom fallback returns nil values" do
+    let (:klass) do
+      custom_fallback = double
+      custom_fallback.should_receive(:value).exactly(1).times.and_return(nil)
+
+      Class.new do
+        include ClassProxy
+
+        attr_accessor :custom
+
+        proxy_methods custom: lambda { custom_fallback.value }
+      end
+    end
+    let (:object) { klass.new }
+
+    it "caches the response of an overriden proxy method declaration when nil" do
+      object.custom.should be_nil
+      object.custom.should be_nil
+    end
+  end
 end

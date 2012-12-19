@@ -101,27 +101,31 @@ module ClassProxy
     private
 
     def run_fallback(args, _self=nil)
-      obj = _self || self.new
+      _self ||= self.new
 
-      fallback_obj = obj.instance_exec args, &@fallback_fetch
+      _self.instance_eval "@proxied_with_nil ||= []"
+
+      fallback_obj = _self.instance_exec args, &@fallback_fetch
 
       # Use the after_fallback_method
-      obj.instance_exec fallback_obj, &@after_fallback_method if @after_fallback_method.is_a? Proc
+      _self.instance_exec fallback_obj, &@after_fallback_method if @after_fallback_method.is_a? Proc
 
       # Go through the keys of the return object and try to use setters
-      if fallback_obj and obj and fallback_obj.respond_to? :keys and fallback_obj.keys.respond_to? :each
+      if fallback_obj and fallback_obj.respond_to? :keys and fallback_obj.keys.respond_to? :each
         fallback_obj.keys.each do |key|
-          next unless obj.respond_to? "#{key}="
+          next unless _self.respond_to? "#{key}="
 
           # check if its set to something else
-          get_method = obj.respond_to?("no_proxy_#{key}") ? "no_proxy_#{key}" : key
-          if obj.respond_to? get_method and obj.send(get_method) == nil
-            obj.send("#{key}=", fallback_obj.send(key))
+          get_method = _self.respond_to?("no_proxy_#{key}") ? "no_proxy_#{key}" : key
+          if _self.respond_to? get_method and _self.send(get_method) == nil
+            value = fallback_obj.send(key)
+            _self.send("#{key}=", value)
+            _self.instance_eval "@proxied_with_nil << key" if value == nil
           end
         end
       end
 
-      return obj
+      return _self
     end
 
     def proxy_method(method_name, proc=nil)
@@ -134,39 +138,42 @@ module ClassProxy
           # Use the no_proxy one first
           v = self.send("no_proxy_#{method_name}".to_sym, *args)
 
-          # TODO -- Cache if this also returned nil so the fallback is not used
-          #         constantly on actual nil values
-
           # Since AR calls the getter method when using the setter method
           # to establish the dirty attribute, since the getter is being replaced
           # here and the setter is being used when appropriate, the @mutex_in_call_for
           # prevents endless recursion.
           @mutex_in_call_for ||= []
+          @proxied_with_nil  ||= []
           if v == nil and not @mutex_in_call_for.include? method_name
-            @mutex_in_call_for << method_name
-            method = "_run_fallback_#{method_name}".to_sym
-            if self.respond_to?(method)
-              v = if self.method(method).arity == 1
-                # Callback method is expecting to receive the fallback object
-                fallback_fetch_method = self.class.instance_variable_get(:@fallback_fetch)
-                fallback_obj = fallback_fetch_method[self]
-                self.send(method, fallback_obj)
+            unless @proxied_with_nil.include? method_name
+              @mutex_in_call_for << method_name
+              method = "_run_fallback_#{method_name}".to_sym
+
+              if self.respond_to?(method)
+                # arity == 1 means that the callback is expecting the fallback object
+                v = if self.method(method).arity == 1
+                  # Callback method is expecting to receive the fallback object
+                  fallback_fetch_method = self.class.instance_variable_get(:@fallback_fetch)
+                  fallback_obj = fallback_fetch_method[self]
+                  self.send(method, fallback_obj)
+                else
+                  # Callback method doesn't need the fallback object
+                  self.send(method)
+                end
               else
-                # Callback method doesn't need the fallback object
-                self.send(method)
+                # This method has no callback, so just run the fallback
+                args_class = ArgsClass.new(self)
+                self.class.send :run_fallback, args_class, self
+
+                # The value might have changed, so check here
+                v = self.send("no_proxy_#{method_name}".to_sym)
               end
-            else
-              # This method has no callback, so just run the fallback
-              args_class = ArgsClass.new(self)
-              self.class.send :run_fallback, args_class, self
 
-              # The value might have changed, so check here
-              v = self.send("no_proxy_#{method_name}".to_sym)
+              # Set the defaults when this class responds to the same method
+              self.send("#{method_name}=".to_sym, v) if v and self.respond_to?("#{method_name}=")
+              @mutex_in_call_for.delete method_name
+              @proxied_with_nil << method_name if v == nil
             end
-
-            # Set the defaults when this class responds to the same method
-            self.send("#{method_name}=".to_sym, v) if v and self.respond_to?("#{method_name}=")
-            @mutex_in_call_for.delete method_name
           end
 
           return v
