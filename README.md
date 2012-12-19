@@ -1,5 +1,4 @@
-class-proxy
-===========
+# class-proxy [![Build Status](https://secure.travis-ci.org/heelhook/class-proxy.png?branch=master)](https://travis-ci.org/heelhook/class-proxy)
 
 A generic (ActiveRecord compatible) class proxy to setup proxy methods for your classes.
 

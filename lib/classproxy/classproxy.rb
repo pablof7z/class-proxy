@@ -120,7 +120,7 @@ module ClassProxy
           if _self.respond_to? get_method and _self.send(get_method) == nil
             value = fallback_obj.send(key)
             _self.send("#{key}=", value)
-            _self.instance_eval "@proxied_with_nil << key" if value == nil
+            _self.instance_eval "@proxied_with_nil << key.to_sym" if value == nil
           end
         end
       end

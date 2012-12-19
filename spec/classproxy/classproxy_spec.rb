@@ -124,7 +124,7 @@ describe ClassProxy do
     let (:klass) do
       t = double
       t.should_receive(:respond_to?).and_return(true)
-      t.should_receive(:keys).at_least(1).times.and_return([:method1, :method2])
+      t.should_receive(:keys).at_least(1).times.and_return([:method1, 'method2'])
       t.should_receive(:method1).and_return('with value')
       t.should_receive(:method2).exactly(1).times.and_return(nil)
 
@@ -153,6 +153,11 @@ describe ClassProxy do
     it "comes back with nothing for the method that has nothing but doesn't instist on calling it" do
       object.method2.should be_nil
       object.method2.should be_nil
+    end
+
+    it "uses symbols to keep track of methods that returned nil" do
+      object.method1
+      object.instance_variable_get(:@proxied_with_nil).each {|k| k.class.should == Symbol }
     end
   end
 
