@@ -172,6 +172,7 @@ module ClassProxy
           end
 
           v = self.send(*send_args) if send_args
+          self.send("#{method_name}=", v) if v and custom_fallback
 
           @mutex_in_call_for.delete method_name
 

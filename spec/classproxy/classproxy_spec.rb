@@ -181,4 +181,25 @@ describe ClassProxy do
       object.custom.should be_nil
     end
   end
+
+  context "custom fallback returns nil values" do
+    let (:klass) do
+      custom_fallback = double
+      custom_fallback.should_receive(:value_not_nil).exactly(1).times.and_return(true)
+
+      Class.new do
+        include ClassProxy
+
+        attr_accessor :custom
+
+        proxy_methods custom: lambda { custom_fallback.value_not_nil }
+      end
+    end
+    let (:object) { klass.new }
+
+    it "caches the response of an overriden proxy method" do
+      object.custom.should_not be_nil
+      object.custom.should_not be_nil
+    end
+  end
 end
