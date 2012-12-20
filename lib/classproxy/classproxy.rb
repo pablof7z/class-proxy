@@ -154,24 +154,34 @@ module ClassProxy
 
           custom_fallback = !!self.respond_to?(fallback_method)
 
-          if custom_fallback and not @fallbacks_used.include? method_name
-            send_args = [fallback_method]
+          begin
+            if custom_fallback and not @fallbacks_used.include? method_name
+              send_args = [fallback_method]
 
-            if self.method(fallback_method).arity == 1
-              def_fallback_obj = self.class.instance_variable_get(:@fallback_fetch)[self]
-              send_args << def_fallback_obj
+              if self.method(fallback_method).arity == 1
+                def_fallback_obj = self.class.instance_variable_get(:@fallback_fetch)[self]
+                send_args << def_fallback_obj
+              end
+
+              @fallbacks_used << method_name
+            elsif not custom_fallback and not @fallbacks_used.include? "default"
+              args_class = ArgsClass.new(self)
+              self.class.send :run_fallback, args_class, self
+
+              # The value might have changed, so check here
+              send_args = ["no_proxy_#{method_name}".to_sym]
             end
 
-            @fallbacks_used << method_name
-          elsif not custom_fallback and not @fallbacks_used.include? "default"
-            args_class = ArgsClass.new(self)
-            self.class.send :run_fallback, args_class, self
-
-            # The value might have changed, so check here
-            send_args = ["no_proxy_#{method_name}".to_sym]
+            v = self.send(*send_args) if send_args
+          rescue NotFound
+            if custom_fallback and not @fallbacks_used.include? "default"
+              # If a custom callback raises NotFound, run the default fallback
+              # (if it hasn't been used previously), that way the default fallback
+              # has a chance to set the method that had been overriden previously
+              custom_fallback = false
+              retry
+            end
           end
-
-          v = self.send(*send_args) if send_args
           self.send("#{method_name}=", v) if v and custom_fallback
 
           @mutex_in_call_for.delete method_name

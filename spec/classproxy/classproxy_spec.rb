@@ -161,45 +161,75 @@ describe ClassProxy do
     end
   end
 
-  context "custom fallback returns nil values" do
-    let (:klass) do
-      custom_fallback = double
-      custom_fallback.should_receive(:value).exactly(1).times.and_return(nil)
+  context "custom fallback" do
+    context "returns nil values" do
+      let (:klass) do
+        custom_fallback = double
+        custom_fallback.should_receive(:value).exactly(1).times.and_return(nil)
 
-      Class.new do
-        include ClassProxy
+        Class.new do
+          include ClassProxy
 
-        attr_accessor :custom
+          attr_accessor :custom
 
-        proxy_methods custom: lambda { custom_fallback.value }
+          proxy_methods custom: lambda { custom_fallback.value }
+        end
+      end
+      let (:object) { klass.new }
+
+      it "caches the response of an overriden proxy method declaration when nil" do
+        object.custom.should be_nil
+        object.custom.should be_nil
       end
     end
-    let (:object) { klass.new }
 
-    it "caches the response of an overriden proxy method declaration when nil" do
-      object.custom.should be_nil
-      object.custom.should be_nil
-    end
-  end
+    context "returns not nil values" do
+      let (:klass) do
+        custom_fallback = double
+        custom_fallback.should_receive(:value_not_nil).exactly(1).times.and_return(true)
 
-  context "custom fallback returns nil values" do
-    let (:klass) do
-      custom_fallback = double
-      custom_fallback.should_receive(:value_not_nil).exactly(1).times.and_return(true)
+        Class.new do
+          include ClassProxy
 
-      Class.new do
-        include ClassProxy
+          attr_accessor :custom
 
-        attr_accessor :custom
+          proxy_methods custom: lambda { custom_fallback.value_not_nil }
+        end
+      end
+      let (:object) { klass.new }
 
-        proxy_methods custom: lambda { custom_fallback.value_not_nil }
+      it "caches the response of an overriden proxy method" do
+        object.custom.should_not be_nil
+        object.custom.should_not be_nil
       end
     end
-    let (:object) { klass.new }
 
-    it "caches the response of an overriden proxy method" do
-      object.custom.should_not be_nil
-      object.custom.should_not be_nil
+    context "requests a fallback to default" do
+      let (:klass) do
+        Class.new do
+          include ClassProxy
+
+          fallback_fetch { |args| Hashie::Mash.new(method2: self.method1) }
+
+          attr_accessor :method1, :method2
+
+          proxy_methods :method1
+          proxy_methods method2: lambda { raise ClassProxy::NotFound }
+        end
+      end
+      let (:object) do
+        o = klass.new
+        o.method1 = 'has a value'
+        o
+      end
+
+      it "has a value on method1" do
+        object.method1.should_not be_nil
+      end
+
+      it "gets a value for a method that requests a fallback" do
+        object.method2.should_not be_nil
+      end
     end
   end
 end
