@@ -219,8 +219,7 @@ module ClassProxy
       @target
     end
 
-    def method_missing(method, args, &block)
-      puts "calling method_missing #{method}"
+    def method_missing(method, args={}, &block)
       @target.send(method, *args)
     end
   end
