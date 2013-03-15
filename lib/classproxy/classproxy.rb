@@ -6,7 +6,7 @@ module ClassProxy
   class NotFound < StandardError; end
 
   module ClassMethods
-    # This method establishes how a the cache should be hit, it receives a
+    # This method establishes how the cache should be hit, it receives a
     # hash with the data used for the query. If this method doesn't find
     # anything the fallbacks will be triggered
     #
